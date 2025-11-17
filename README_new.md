@@ -134,14 +134,6 @@ This project uses **Google Gemini API** for natural language summaries.
 2. Create or use existing API key
 3. Add to `backend/.env`: `GEMINI_API_KEY=your-key`
 
-### Project Configuration:
-- **Project Name**: Real Estate Analysis Chatbot
-- **Google Cloud Project**: `projects/785869146884`
-- **Project Number**: `785869146884`
-- **API Key**: Configured in `backend/.env` (keep secret ⚠️)
-
-**Note**: The Gemini API key is already configured in the `.env` file and should not be committed to GitHub. The `.gitignore` file protects this sensitive data.
-
 ## 📊 Database Schema
 
 ### Property Model

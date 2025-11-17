@@ -1,0 +1,64 @@
+Here is the message, crafted with the requested tone, based on the project files you provided.
+
+---
+
+**FILE: `PROJECT_MANDATE_REAL_ESTATE_BOT.txt`**
+
+**SUBJECT: OFFICIAL PROJECT KICKOFF: Real Estate Chatbot - NON-NEGOTIABLE REQUIREMENTS**
+
+**TO: Lead Developer (via AI Agent)**
+
+I have provided you with two files:
+1.  [cite_start]`Sigmavalue Full Stack Developer Assignment 2025.pdf` [cite: 1]
+2.  [cite_start]`Sample_data.xlsx - Sheet1.csv` [cite: 48]
+
+This is your **only** specification. [cite_start]Do not treat the PDF as an "assignment"[cite: 1]; it is a **client mandate**. [cite_start]The CSV is the data you **will** use[cite: 12, 48].
+
+This is a **zero-tolerance project**. "Close enough" is not acceptable. "Mocked" is a failure. "It works on my machine" is a failure.
+
+[cite_start]Your mandate is to build the "Mini Real Estate Analysis Chatbot" [cite: 3] [cite_start]using **React and Django**[cite: 4].
+
+---
+
+### [cite_start]**CRITICAL BLOCK 1: Backend Mandate (Django)** [cite: 20]
+
+1.  [cite_start]**Data Processing:** The backend **must** accept user queries (like "Analyze Wakad" [cite: 16] [cite_start]or "Compare demand trends" [cite: 17][cite_start]) and process the provided Excel dataset[cite: 12, 21]. [cite_start]It **must** parse and filter this data with 100% accuracy[cite: 22, 45].
+2.  [cite_start]**API Return Structure:** The API **must** return three distinct items[cite: 23]:
+    * [cite_start]A natural-language summary[cite: 8].
+    * [cite_start]A clean **JSON output** specifically for rendering charts (price/demand per year)[cite: 26].
+    * [cite_start]The raw, **filtered table data** extracted from the Excel file[cite: 10, 27].
+
+---
+
+### [cite_start]**CRITICAL BLOCK 2: Frontend Mandate (React)** [cite: 28]
+
+1.  [cite_start]**Interface:** This **must** be a web-based, chat-style interface[cite: 6, 29].
+2.  **Display:** The UI **must** correctly fetch and display all three items from the backend API:
+    * [cite_start]The text-based summary[cite: 31].
+    * [cite_start]The chart (using Chart.js, Recharts, or similar)[cite: 32].
+    * [cite_start]The filtered table[cite: 33].
+3.  [cite_start]**UI/UX:** The interface must be professional and clear[cite: 44, 46]. I expect zero UI/UX failures.
+
+---
+
+### **CRITICAL BLOCK 3: "Bonus" Items (ARE MANDATORY)**
+
+[cite_start]The PDF lists "Bonus" items[cite: 34]. For this project, **they are not optional**. They are mandatory requirements for completion.
+
+1.  [cite_start]**LLM Integration:** "Mock LLM output" [cite: 24] is **unacceptable**. [cite_start]You **will** integrate the OpenAI API or another *real* LLM to generate the summaries[cite: 35]. A mocked summary is a failed delivery.
+2.  [cite_start]**Download Data:** A "Download Data" option **must** be implemented and functional[cite: 36].
+3.  [cite_start]**Deployment:** The *entire* application **must** be deployed and live on Vercel, Render, or another service[cite: 37]. I will not accept a GitHub repo as a final product. [cite_start]I expect a **live demo link**[cite: 40].
+
+---
+
+### **FINAL DELIVERY REQUIREMENTS**
+
+Failure to provide any of the following constitutes a total failure of the contract.
+
+1.  [cite_start]**GitHub Repository:** A complete, clean repository with a professional `README`[cite: 39].
+2.  [cite_start]**Live Demo Link:** The working, deployed URL[cite: 40].
+3.  [cite_start]**Demo Video:** A 1-2 minute video demonstrating that **all** functionality works exactly as specified[cite: 41]. This is compulsory.
+
+[cite_start]Read the PDF [cite: 1] and this message. This is the **entire** brief. [cite_start]I expect perfect code structure [cite: 43][cite_start], flawless data processing[cite: 45], and a fully deployed, functional product.
+
+**Do not fail.**
