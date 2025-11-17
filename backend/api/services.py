@@ -4,6 +4,19 @@ import json
 from django.db.models import Avg, Count, Sum, Q
 from .models import Property
 from collections import defaultdict
+import statistics
+from decimal import Decimal
+from datetime import datetime, date
+
+
+class DecimalEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle Decimal and datetime objects"""
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, (datetime, date)):
+            return str(obj)
+        return super().default(obj)
 
 
 class GeminiService:
@@ -12,25 +25,353 @@ class GeminiService:
         self.model = genai.GenerativeModel('gemini-2.5-flash')
     
     def generate_intelligent_summary(self, properties_data, location=None, query=None, query_type=None):
-        """Generate intelligent summaries based on query type"""
+        """Generate TRULY intelligent conversational summaries using Gemini AI"""
         try:
             if not properties_data:
                 return "No data available for the given query."
             
-            # Handle different query types
-            if query_type == 'listing':
-                return self._format_property_listing(properties_data, location)
-            elif query_type == 'comparison':
-                return self._generate_comparison_analysis(properties_data, location, query)
-            elif query_type == 'trend':
-                return self._generate_trend_analysis(properties_data, location, query)
-            elif query_type == 'recommendation':
-                return self._generate_recommendations(properties_data, location, query)
-            else:
-                return self._generate_general_analysis(properties_data, location, query)
+            # Convert properties_data to JSON-serializable format
+            properties_data = self._ensure_json_serializable(properties_data)
+            
+            # Prepare rich data context for Gemini
+            data_context = self._prepare_data_context(properties_data, location, query_type)
+            
+            # Build a smart prompt that uses Gemini's full conversational power
+            prompt = self._build_intelligent_prompt(query, properties_data, data_context, query_type, location)
+            
+            # Call Gemini with streaming for real-time response
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.8,  # Creative but factual
+                    top_p=0.95,
+                    top_k=50,
+                    max_output_tokens=3000
+                ),
+                safety_settings=[
+                    {
+                        "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                        "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    }
+                ]
+            )
+            
+            summary = response.text if response and response.text else "Unable to generate analysis."
+            # Don't fall back to generic response - if there's an issue, it will be clear
+            return summary
         
         except Exception as e:
-            return f"Summary generated with data from {len(properties_data)} properties."
+            print(f"Gemini Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # Return more informative error
+            return f"Error generating analysis: {str(e)}"
+    
+    def _ensure_json_serializable(self, properties_data):
+        """Convert all properties to JSON-serializable format"""
+        serializable_data = []
+        for prop in properties_data:
+            clean_prop = {}
+            for key, value in prop.items():
+                if isinstance(value, Decimal):
+                    clean_prop[key] = float(value)
+                elif isinstance(value, (datetime, date)):
+                    clean_prop[key] = str(value)
+                else:
+                    clean_prop[key] = value
+            serializable_data.append(clean_prop)
+        return serializable_data
+    
+    def _prepare_data_context(self, properties_data, location, query_type):
+        """Prepare rich, analytical data context for Gemini to analyze"""
+        context = {
+            'total_properties': len(properties_data),
+            'locations': list(set(p.get('location') for p in properties_data)),
+            'price_stats': self._calculate_price_stats(properties_data),
+            'demand_stats': self._calculate_demand_stats(properties_data),
+            'property_types': self._categorize_by_type(properties_data),
+            'year_analysis': self._analyze_by_year(properties_data),
+            'location_comparison': self._compare_locations(properties_data),
+            'investment_insights': self._calculate_investment_metrics(properties_data),
+            'market_trends': self._identify_trends(properties_data),
+            'top_properties': self._identify_top_properties(properties_data)
+        }
+        return context
+    
+    def _calculate_price_stats(self, properties_data):
+        """Calculate comprehensive price statistics"""
+        prices = [float(p.get('price', 0)) for p in properties_data if p.get('price')]
+        if not prices:
+            return {}
+        
+        return {
+            'min': min(prices),
+            'max': max(prices),
+            'avg': sum(prices) / len(prices),
+            'median': statistics.median(prices),
+            'std_dev': statistics.stdev(prices) if len(prices) > 1 else 0
+        }
+    
+    def _calculate_demand_stats(self, properties_data):
+        """Calculate comprehensive demand statistics"""
+        demands = [float(p.get('demand_score', 0)) for p in properties_data if p.get('demand_score')]
+        if not demands:
+            return {}
+        
+        return {
+            'min': min(demands),
+            'max': max(demands),
+            'avg': sum(demands) / len(demands),
+            'median': statistics.median(demands),
+            'high_demand': sum(1 for d in demands if d > statistics.median(demands) * 1.2)
+        }
+    
+    def _categorize_by_type(self, properties_data):
+        """Categorize properties by type with insights"""
+        by_type = defaultdict(list)
+        for prop in properties_data:
+            by_type[prop.get('property_type', 'Residential')].append(prop)
+        
+        result = {}
+        for ptype, props in by_type.items():
+            prices = [float(p.get('price', 0)) for p in props if p.get('price')]
+            result[ptype] = {
+                'count': len(props),
+                'avg_price': sum(prices) / len(prices) if prices else 0,
+                'price_range': [min(prices), max(prices)] if prices else [0, 0]
+            }
+        return result
+    
+    def _analyze_by_year(self, properties_data):
+        """Analyze properties by year - important for trends"""
+        by_year = defaultdict(list)
+        for prop in properties_data:
+            by_year[prop.get('year', 0)].append(prop)
+        
+        result = {}
+        for year in sorted(by_year.keys()):
+            props = by_year[year]
+            prices = [float(p.get('price', 0)) for p in props if p.get('price')]
+            demands = [float(p.get('demand_score', 0)) for p in props if p.get('demand_score')]
+            
+            result[year] = {
+                'count': len(props),
+                'avg_price': sum(prices) / len(prices) if prices else 0,
+                'avg_demand': sum(demands) / len(demands) if demands else 0
+            }
+        return result
+    
+    def _compare_locations(self, properties_data):
+        """Compare locations for market insights"""
+        by_location = defaultdict(list)
+        for prop in properties_data:
+            by_location[prop.get('location')].append(prop)
+        
+        result = {}
+        for loc, props in by_location.items():
+            prices = [float(p.get('price', 0)) for p in props if p.get('price')]
+            demands = [float(p.get('demand_score', 0)) for p in props if p.get('demand_score')]
+            
+            result[loc] = {
+                'count': len(props),
+                'avg_price': sum(prices) / len(prices) if prices else 0,
+                'min_price': min(prices) if prices else 0,
+                'max_price': max(prices) if prices else 0,
+                'price_range': [min(prices), max(prices)] if prices else [0, 0],
+                'avg_demand': sum(demands) / len(demands) if demands else 0,
+                'high_demand_count': sum(1 for d in demands if d > 2000)
+            }
+        return result
+    
+    def _calculate_investment_metrics(self, properties_data):
+        """Calculate ROI and investment potential metrics"""
+        metrics = []
+        for prop in properties_data:
+            price = float(prop.get('price', 0))
+            demand = float(prop.get('demand_score', 0))
+            
+            if price > 0:
+                roi_score = (demand / price) * 100000  # Normalized score
+                metrics.append({
+                    'location': prop.get('location'),
+                    'price': price,
+                    'demand': demand,
+                    'roi_score': roi_score,
+                    'investment_rating': 'Excellent' if roi_score > 80 else 'Good' if roi_score > 50 else 'Fair'
+                })
+        
+        return sorted(metrics, key=lambda x: x['roi_score'], reverse=True)[:5]
+    
+    def _identify_trends(self, properties_data):
+        """Identify market trends from year-over-year data"""
+        by_year = defaultdict(list)
+        for prop in properties_data:
+            by_year[prop.get('year', 0)].append(prop)
+        
+        trends = []
+        years = sorted(by_year.keys())
+        
+        for i in range(len(years) - 1):
+            year1, year2 = years[i], years[i + 1]
+            props1 = by_year[year1]
+            props2 = by_year[year2]
+            
+            prices1 = [float(p.get('price', 0)) for p in props1 if p.get('price')]
+            prices2 = [float(p.get('price', 0)) for p in props2 if p.get('price')]
+            
+            if prices1 and prices2:
+                avg1 = sum(prices1) / len(prices1)
+                avg2 = sum(prices2) / len(prices2)
+                change = ((avg2 - avg1) / avg1) * 100
+                
+                trends.append({
+                    'period': f"{year1} to {year2}",
+                    'change_percent': change,
+                    'direction': 'UP' if change > 0 else 'DOWN'
+                })
+        
+        return trends
+    
+    def _identify_top_properties(self, properties_data):
+        """Identify top performing properties"""
+        ranked = []
+        for prop in properties_data:
+            score = (float(prop.get('demand_score', 0)) * 0.6) - (float(prop.get('price', 0)) / 100000 * 0.4)
+            ranked.append({**prop, 'investment_score': score})
+        
+        return sorted(ranked, key=lambda x: x['investment_score'], reverse=True)[:5]
+    
+    def _build_intelligent_prompt(self, user_query, properties_data, data_context, query_type, location):
+        """Build a smart prompt that gets the best out of Gemini"""
+        
+        # Create a comprehensive data summary for context
+        locations_list = data_context['locations']
+        
+        # Build location-specific insights
+        location_insights = ""
+        for loc, stats in data_context['location_comparison'].items():
+            location_insights += f"\n{loc}: {stats['count']} properties, Avg ${stats['avg_price']:,.0f}, Demand {stats['avg_demand']:.0f}"
+        
+        # Build investment top picks
+        investment_picks = ""
+        for inv in data_context['investment_insights'][:5]:
+            investment_picks += f"\n- {inv['location']}: Price ${inv['price']:,.0f}, Demand {inv['demand']:.0f}, ROI Score {inv['roi_score']:.2f}"
+        
+        # Build trend insights
+        trend_insights = ""
+        for trend in data_context['market_trends']:
+            trend_insights += f"\n- {trend['period']}: {trend['direction']} {abs(trend['change_percent']):.1f}%"
+        
+        # Get top 3 highest demand properties with details
+        top_demand_props = sorted(
+            [p for p in properties_data],
+            key=lambda x: float(x.get('demand_score', 0)),
+            reverse=True
+        )[:3]
+        
+        top_demand_str = ""
+        for i, prop in enumerate(top_demand_props, 1):
+            top_demand_str += f"\n{i}. {prop.get('location')} - Demand: {float(prop.get('demand_score', 0)):.0f}, Price: ${float(prop.get('price', 0)):,.0f}, Type: {prop.get('property_type')}"
+        
+        # Get unique areas with their average metrics
+        areas_summary = ""
+        for loc, stats in data_context['location_comparison'].items():
+            areas_summary += f"\n• {loc}: {stats['count']} properties | Avg Price: ${stats['avg_price']:,.0f} | Avg Demand: {stats['avg_demand']:.0f} | Price Range: ${stats['min_price']:,.0f}-${stats['max_price']:,.0f}"
+        
+        # Create property database list
+        property_db = []
+        for p in properties_data:
+            property_db.append({
+                'location': p.get('location'),
+                'type': p.get('property_type'),
+                'price': float(p.get('price', 0)),
+                'demand_score': float(p.get('demand_score', 0)),
+                'year': p.get('year')
+            })
+        
+        property_db_json = json.dumps(property_db, indent=2, cls=DecimalEncoder)
+        
+        # Create high performing properties list
+        high_performing = []
+        for p in properties_data:
+            if p.get('demand_score', 0) > data_context['demand_stats'].get('avg', 0):
+                high_performing.append({
+                    'location': p.get('location'),
+                    'type': p.get('property_type'),
+                    'price': float(p.get('price', 0)),
+                    'demand_score': float(p.get('demand_score', 0)),
+                    'year': p.get('year')
+                })
+        
+        high_performing_json = json.dumps(high_performing, indent=2, cls=DecimalEncoder)
+        
+        prompt = f"""You are a WORLD-CLASS real estate market analyst and investment advisor.
+You MUST provide SPECIFIC, DATA-DRIVEN answers that directly address the user's question.
+
+USER QUERY: "{user_query}"
+
+RESPONSE GUIDELINES:
+✓ DIRECTLY answer what was asked - don't give generic market summaries
+✓ CITE SPECIFIC properties, locations, and numbers
+✓ Sound like an expert advisor giving personalized insights
+✓ When asked "What's the highest demand property?" - TELL THEM THE NAME, DEMAND SCORE, and PRICE
+✓ When asked "list all areas" - Give EACH area with metrics, not just names
+✓ When asked for "trends" - Explain what's happening and WHY
+✓ NEVER respond with just "Analysis of X properties - Average Price: $Y"
+✓ Make every response valuable and specific to THEIR question
+✓ Use comparisons and insights to help them understand the market
+
+MARKET DATA CONTEXT:
+
+MARKET OVERVIEW:
+- Total Properties: {data_context['total_properties']}
+- All Locations: {', '.join(locations_list)}
+- Price Range: ${data_context['price_stats'].get('min', 0):,.0f} - ${data_context['price_stats'].get('max', 0):,.0f}
+- Average Price: ${data_context['price_stats'].get('avg', 0):,.0f}
+- Median Price: ${data_context['price_stats'].get('median', 0):,.0f}
+
+DEMAND ANALYSIS:
+- Average Market Demand: {data_context['demand_stats'].get('avg', 0):.0f}
+- Highest Demand Score: {data_context['demand_stats'].get('max', 0):.0f}
+- Top 3 Highest Demand Properties:{top_demand_str}
+
+AREAS & LOCATIONS:
+{areas_summary}
+
+PROPERTY TYPE BREAKDOWN:
+{json.dumps(data_context['property_types'], indent=2, cls=DecimalEncoder)}
+
+TOP INVESTMENT OPPORTUNITIES:
+{investment_picks}
+
+MARKET TRENDS:
+{trend_insights}
+
+HIGH-PERFORMING PROPERTIES (Above Average Demand):
+{high_performing_json}
+
+COMPLETE PROPERTY DATABASE:
+{property_db_json}
+
+Remember: Answer the SPECIFIC question asked with SPECIFIC data. No generic responses."""
+        return prompt
+    
+    def _calc_avg_price(self, properties_data):
+        """Helper to calculate average price"""
+        prices = [float(p.get('price', 0)) for p in properties_data if p.get('price')]
+        return sum(prices) / len(prices) if prices else 0
     
     def _format_property_listing(self, properties_data, location=None):
         """Format properties as a clean listing"""

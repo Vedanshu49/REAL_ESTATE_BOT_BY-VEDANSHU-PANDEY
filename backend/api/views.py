@@ -83,22 +83,6 @@ class QueryViewSet(viewsets.ViewSet):
             'count': len(table_data),
             'queryType': query_type
         })
-        
-        # Save query to database
-        query_obj = Query.objects.create(
-            user_query=user_query,
-            location_filter=location,
-            response_summary=summary,
-            chart_data=chart_data,
-            table_data=table_data
-        )
-        
-        return Response({
-            'summary': summary,
-            'chartData': chart_data,
-            'tableData': table_data,
-            'count': len(table_data)
-        })
     
     @action(detail=False, methods=['get'])
     def history(self, request):
